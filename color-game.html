@@ -1,0 +1,882 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Color Burst: Pixel Pop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#FF3366',
+                        secondary: '#33CCFF',
+                        accent: '#99FF33',
+                        dark: '#121212',
+                        pixel: {
+                            red: '#FF3366',
+                            blue: '#33CCFF',
+                            green: '#99FF33',
+                            gray: '#E0E0E0',
+                            pink: '#FF66CC',
+                        }
+                    },
+                    fontFamily: {
+                        pixel: ['"Press Start 2P"', 'cursive', 'sans-serif'],
+                        game: ['"Fredoka One"', 'cursive', 'sans-serif']
+                    },
+                    animation: {
+                        'burst': 'burst 0.3s ease-out',
+                        'pop': 'pop 0.2s ease-out',
+                        'glow': 'glow 2s infinite alternate',
+                        'float': 'float 3s ease-in-out infinite',
+                        'bounce-in': 'bounce-in 0.5s ease-out'
+                    },
+                    keyframes: {
+                        burst: {
+                            '0%': { transform: 'scale(0)', opacity: 1 },
+                            '50%': { transform: 'scale(1.5)', opacity: 0.8 },
+                            '100%': { transform: 'scale(0)', opacity: 0 }
+                        },
+                        pop: {
+                            '0%': { transform: 'scale(1)' },
+                            '50%': { transform: 'scale(1.3)' },
+                            '100%': { transform: 'scale(1)' }
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 5px rgba(255, 51, 102, 0.7)' },
+                            '100%': { boxShadow: '0 0 20px rgba(255, 51, 102, 0.9)' }
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' }
+                        },
+                        'bounce-in': {
+                            '0%': { transform: 'scale(0.8)', opacity: 0 },
+                            '70%': { transform: 'scale(1.1)' },
+                            '100%': { transform: 'scale(1)', opacity: 1 }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .pixel-border {
+                box-shadow: 0 0 0 1px #fff, 
+                            inset 0 0 0 1px #fff;
+            }
+            .text-shadow {
+                text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3);
+            }
+            .pixel-effect {
+                image-rendering: pixelated;
+                image-rendering: crisp-edges;
+            }
+            .touch-feedback {
+                -webkit-tap-highlight-color: transparent;
+            }
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body class="bg-dark text-white min-h-screen font-game overflow-x-hidden touch-feedback">
+    <!-- 开始界面 -->
+    <div id="start-screen" class="container mx-auto px-4 py-8 h-screen flex flex-col items-center justify-center">
+        <h1 class="text-[clamp(1.8rem,8vw,3rem)] font-pixel text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent text-shadow mb-4 animate-float text-center">Color Burst</h1>
+        <h2 class="text-[clamp(1rem,5vw,1.8rem)] font-pixel text-white text-shadow mb-8 text-center">Pixel Pop</h2>
+        
+        <!-- 用户名输入 -->
+        <div class="mb-6 w-full max-w-md">
+            <label for="username" class="block text-secondary mb-2 text-center">Enter your name:</label>
+            <input type="text" id="username" placeholder="Player 1" 
+                   class="w-full bg-dark/70 border-2 border-secondary rounded-lg px-4 py-3 text-white focus:outline-none focus:border-accent text-center text-lg">
+        </div>
+        
+        <!-- 游戏规则 (更新版) -->
+        <div class="bg-dark/70 border-2 border-secondary rounded-lg p-4 mb-8 w-full max-w-md">
+            <h3 class="text-lg font-pixel mb-3 text-primary text-center">How to Play</h3>
+            <ul class="space-y-2 text-sm">
+                <li class="flex items-start gap-2">
+                    <i class="fa fa-check text-accent mt-1"></i>
+                    <span>Click any block that has at least 1 adjacent block of the same color</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa fa-check text-accent mt-1"></i>
+                    <span>All connected same color blocks will burst</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa fa-check text-accent mt-1"></i>
+                    <span>Score points before time runs out</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa fa-check text-accent mt-1"></i>
+                    <span>More blocks in a group = Higher scores!</span>
+                </li>
+            </ul>
+        </div>
+        
+        <button id="start-game" class="bg-primary hover:bg-primary/80 w-full max-w-md py-4 rounded-lg transition-all animate-glow text-lg font-bold">
+            START GAME
+        </button>
+    </div>
+
+    <!-- 游戏容器 (默认隐藏) -->
+    <div id="game-container" class="container mx-auto px-3 py-4 hidden">
+        <!-- 游戏标题 (简化) -->
+        <div class="text-center mb-3">
+            <h1 class="text-[clamp(1rem,4vw,1.5rem)] font-pixel text-transparent bg-clip-text bg-gradient-to-r from-primary via-secondary to-accent text-shadow">Color Burst</h1>
+        </div>
+
+        <!-- 游戏信息区 (优化移动端布局) -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-dark border-2 border-secondary px-2 py-1 rounded-lg">
+                    <p class="text-xs text-blue-200">Score</p>
+                    <p id="score" class="text-lg font-pixel text-accent">0</p>
+                </div>
+                <div class="bg-dark border-2 border-secondary px-2 py-1 rounded-lg">
+                    <p class="text-xs text-blue-200">Time</p>
+                    <p id="time" class="text-lg font-pixel text-primary">60</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="bg-dark border-2 border-secondary px-2 py-1 rounded-lg">
+                    <p class="text-xs text-blue-200">Level</p>
+                    <p id="level" class="text-lg font-pixel text-secondary">1</p>
+                </div>
+                <div class="bg-dark border-2 border-secondary px-2 py-1 rounded-lg">
+                    <p class="text-xs text-blue-200">Player</p>
+                    <p id="player-name" class="text-lg font-pixel text-white truncate">Player 1</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex gap-2 mb-4">
+            <button id="sound-toggle" class="flex-1 bg-dark border-2 border-secondary hover:border-accent py-2 rounded-lg transition-all flex items-center justify-center gap-1">
+                <i class="fa fa-volume-up"></i>
+                <span class="text-sm">Sound</span>
+            </button>
+            <button id="pause-game" class="flex-1 bg-secondary hover:bg-secondary/80 py-2 rounded-lg transition-all flex items-center justify-center gap-1">
+                <i class="fa fa-pause"></i>
+                <span class="text-sm">Pause</span>
+            </button>
+            <button id="restart" class="flex-1 bg-primary hover:bg-primary/80 py-2 rounded-lg transition-all animate-glow flex items-center justify-center gap-1">
+                <i class="fa fa-refresh"></i>
+                <span class="text-sm">Restart</span>
+            </button>
+        </div>
+
+        <!-- 游戏区域 (响应式设计) -->
+        <div class="relative mx-auto w-full mb-4" style="max-width: 500px;">
+            <div id="game-board" class="grid gap-[2px] p-2 bg-dark border-2 border-secondary rounded-lg transition-all duration-300 w-full"></div>
+            
+            <!-- 游戏覆盖层 -->
+            <div id="game-overlay" class="absolute inset-0 bg-dark/90 backdrop-blur-md rounded-lg flex flex-col items-center justify-center hidden">
+                <h2 id="overlay-title" class="text-2xl font-pixel mb-3 text-primary animate-bounce-in"></h2>
+                <p id="overlay-message" class="text-lg mb-5 animate-bounce-in" style="animation-delay: 0.1s"></p>
+                <p id="game-over-tip" class="text-sm text-gray-400 mb-5 italic animate-bounce-in" style="animation-delay: 0.2s"></p>
+                <div class="w-full max-w-xs animate-bounce-in" style="animation-delay: 0.3s">
+                    <button id="overlay-restart" class="bg-primary hover:bg-primary/80 px-6 py-3 rounded-lg transition-all animate-glow text-lg w-full">
+                        Play Again
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 暂停覆盖层 -->
+            <div id="pause-overlay" class="absolute inset-0 bg-dark/90 backdrop-blur-md rounded-lg flex flex-col items-center justify-center hidden">
+                <h2 class="text-2xl font-pixel mb-6 text-secondary">Game Paused</h2>
+                <button id="resume-game" class="bg-primary hover:bg-primary/80 px-6 py-3 rounded-lg transition-all animate-glow text-lg w-full max-w-xs mb-3">
+                    Resume
+                </button>
+                <button id="pause-restart" class="bg-dark border-2 border-secondary hover:border-accent px-6 py-3 rounded-lg transition-all text-lg w-full max-w-xs">
+                    Restart Game
+                </button>
+            </div>
+        </div>
+
+        <!-- 排行榜区域 (优化移动端显示) -->
+        <div class="bg-dark border-2 border-secondary rounded-lg p-3 mb-4">
+            <h3 class="text-lg font-pixel mb-2 text-secondary">Top Scores</h3>
+            <div id="leaderboard" class="space-y-1 max-h-40 overflow-y-auto pr-1 text-sm">
+                <!-- 排行榜将通过JS动态填充 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 音效元素 -->
+    <audio id="pop-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-arcade-game-jump-coin-216.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="burst-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-explosion-impact-1699.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="select-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-select-click-1109.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="click-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-soft-click-1123.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="level-up-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-achievement-bell-600.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="game-over-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-player-losing-or-failing-2042.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="error-sound" preload="auto">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // 游戏配置 - 优化移动端体验
+        const GAME_CONFIG = {
+            initialSize: 6, // 增大初始棋盘
+            colors: [
+                'bg-pixel-red',    // 红色
+                'bg-pixel-blue',   // 蓝色
+                'bg-pixel-green',  // 绿色
+                'bg-pixel-gray',   // 灰色
+                'bg-pixel-pink'    // 粉色
+            ],
+            baseTime: 60,
+            timePerLevel: 5,
+            baseScore: 10,
+            levelUpThreshold: 800, // 降低升级门槛
+            soundEnabled: true,
+            blockSize: 'minmax(0, 1fr)', // 自适应方块大小
+            minMatchCount: 2 // 最小匹配数量改为2个
+        };
+
+        // 游戏状态
+        let gameState = {
+            board: [],
+            size: GAME_CONFIG.initialSize,
+            score: 0,
+            time: GAME_CONFIG.baseTime,
+            level: 1,
+            timer: null,
+            isGameOver: false,
+            isPaused: false,
+            username: "Player 1",
+            leaderboard: []
+        };
+
+        // DOM元素
+        const startScreen = document.getElementById('start-screen');
+        const gameContainer = document.getElementById('game-container');
+        const startGameBtn = document.getElementById('start-game');
+        const usernameInput = document.getElementById('username');
+        const playerNameDisplay = document.getElementById('player-name');
+        const gameBoard = document.getElementById('game-board');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const levelDisplay = document.getElementById('level');
+        const restartButton = document.getElementById('restart');
+        const overlay = document.getElementById('game-overlay');
+        const overlayTitle = document.getElementById('overlay-title');
+        const overlayMessage = document.getElementById('overlay-message');
+        const gameOverTip = document.getElementById('game-over-tip');
+        const overlayRestart = document.getElementById('overlay-restart');
+        const soundToggle = document.getElementById('sound-toggle');
+        const leaderboardElement = document.getElementById('leaderboard');
+        const pauseButton = document.getElementById('pause-game');
+        const pauseOverlay = document.getElementById('pause-overlay');
+        const resumeButton = document.getElementById('resume-game');
+        const pauseRestartButton = document.getElementById('pause-restart');
+
+        // 音效元素
+        const sounds = {
+            pop: document.getElementById('pop-sound'),
+            burst: document.getElementById('burst-sound'),
+            select: document.getElementById('select-sound'),
+            click: document.getElementById('click-sound'),
+            levelUp: document.getElementById('level-up-sound'),
+            gameOver: document.getElementById('game-over-sound'),
+            error: document.getElementById('error-sound')
+        };
+
+        // 初始化游戏
+        function initGame() {
+            // 重置游戏状态
+            gameState.score = 0;
+            gameState.time = GAME_CONFIG.baseTime;
+            gameState.level = 1;
+            gameState.size = GAME_CONFIG.initialSize;
+            gameState.isGameOver = false;
+            gameState.isPaused = false;
+            
+            // 更新用户名
+            gameState.username = usernameInput.value.trim() || "Player 1";
+            playerNameDisplay.textContent = gameState.username;
+            
+            // 清除计时器
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+            }
+            
+            // 更新显示
+            updateScore();
+            updateTime();
+            updateLevel();
+            
+            // 隐藏所有覆盖层
+            overlay.classList.add('hidden');
+            pauseOverlay.classList.add('hidden');
+            
+            // 生成新的游戏板
+            generateBoard();
+            
+            // 开始计时器
+            startTimer();
+            
+            // 加载排行榜
+            loadLeaderboard();
+        }
+
+        // 生成游戏板 - 增大棋盘并细化边框
+        function generateBoard() {
+            gameBoard.innerHTML = '';
+            // 使用自适应网格，确保在手机上全屏显示
+            gameBoard.style.gridTemplateColumns = `repeat(${gameState.size}, ${GAME_CONFIG.blockSize})`;
+            
+            gameState.board = [];
+            
+            for (let i = 0; i < gameState.size; i++) {
+                gameState.board[i] = [];
+                for (let j = 0; j < gameState.size; j++) {
+                    // 随机选择颜色
+                    const colorIndex = Math.floor(Math.random() * GAME_CONFIG.colors.length);
+                    gameState.board[i][j] = {
+                        color: colorIndex,
+                        matched: false
+                    };
+                    
+                    // 创建方块元素 - 更细的边框
+                    const block = document.createElement('div');
+                    block.classList.add('aspect-square', 'rounded-sm', 'transition-all', 'cursor-pointer', 'hover:scale-105', 'active:scale-95', 
+                                      GAME_CONFIG.colors[colorIndex], 'pixel-border', 'touch-feedback');
+                    block.dataset.row = i;
+                    block.dataset.col = j;
+                    
+                    // 确保方块有足够的触摸区域
+                    block.style.minHeight = '40px';
+                    
+                    // 添加点击事件 - 快速响应
+                    block.addEventListener('click', function() {
+                        handleBlockClick(parseInt(this.dataset.row), parseInt(this.dataset.col));
+                    });
+                    
+                    // 触摸事件优化
+                    block.addEventListener('touchstart', function(e) {
+                        e.preventDefault();
+                        handleBlockClick(parseInt(this.dataset.row), parseInt(this.dataset.col));
+                    }, { passive: false });
+                    
+                    gameBoard.appendChild(block);
+                }
+            }
+            
+            // 确保初始状态有可匹配的方块
+            if (!hasPossibleMatches()) {
+                generateBoard();
+            }
+        }
+
+        // 处理方块点击 - 优化响应速度
+        function handleBlockClick(row, col) {
+            if (gameState.isGameOver || gameState.isPaused) return;
+            
+            // 播放点击音效
+            playSound('click');
+            
+            // 查找所有相连的相同颜色方块
+            const matchedBlocks = findConnectedBlocks(row, col);
+            
+            // 检查是否达到最小匹配数量
+            if (matchedBlocks.length >= GAME_CONFIG.minMatchCount) {
+                // 标记匹配的方块
+                markMatchedBlocks(matchedBlocks);
+                
+                // 处理匹配
+                handleMatches(matchedBlocks);
+                playSound('pop');
+            } else {
+                // 播放错误音效
+                playSound('error');
+                
+                // 添加点击反馈
+                const blockElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                blockElement.classList.add('scale-90', 'opacity-70');
+                setTimeout(() => {
+                    blockElement.classList.remove('scale-90', 'opacity-70');
+                }, 200);
+            }
+        }
+
+        // 查找所有相连的相同颜色方块（使用BFS算法）
+        function findConnectedBlocks(row, col) {
+            const targetColor = gameState.board[row][col].color;
+            const visited = Array(gameState.size).fill().map(() => Array(gameState.size).fill(false));
+            const queue = [[row, col]];
+            const matched = [[row, col]];
+            visited[row][col] = true;
+            
+            // 检查四个方向
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            
+            while (queue.length > 0) {
+                const [r, c] = queue.shift();
+                
+                for (const [dr, dc] of directions) {
+                    const nr = r + dr;
+                    const nc = c + dc;
+                    
+                    // 检查是否在边界内且未访问过且颜色相同
+                    if (nr >= 0 && nr < gameState.size && nc >= 0 && nc < gameState.size &&
+                        !visited[nr][nc] && gameState.board[nr][nc].color === targetColor) {
+                        
+                        visited[nr][nc] = true;
+                        queue.push([nr, nc]);
+                        matched.push([nr, nc]);
+                    }
+                }
+            }
+            
+            return matched;
+        }
+
+        // 标记匹配的方块
+        function markMatchedBlocks(matchedBlocks) {
+            // 重置所有匹配标记
+            for (let i = 0; i < gameState.size; i++) {
+                for (let j = 0; j < gameState.size; j++) {
+                    gameState.board[i][j].matched = false;
+                }
+            }
+            
+            // 标记匹配的方块
+            for (const [r, c] of matchedBlocks) {
+                gameState.board[r][c].matched = true;
+            }
+        }
+
+        // 更新游戏板UI
+        function updateBoardUI() {
+            for (let i = 0; i < gameState.size; i++) {
+                for (let j = 0; j < gameState.size; j++) {
+                    const blockElement = document.querySelector(`[data-row="${i}"][data-col="${j}"]`);
+                    if (!blockElement) continue;
+                    
+                    // 移除所有颜色类
+                    GAME_CONFIG.colors.forEach(color => {
+                        blockElement.classList.remove(color);
+                    });
+                    // 添加当前颜色类
+                    blockElement.classList.add(GAME_CONFIG.colors[gameState.board[i][j].color]);
+                }
+            }
+        }
+
+        // 处理匹配 - 加快动画速度增强爆破感
+        function handleMatches(matchedBlocks) {
+            if (matchedBlocks.length < GAME_CONFIG.minMatchCount) return;
+            
+            // 创建爆炸效果
+            for (const [row, col] of matchedBlocks) {
+                createBurstEffect(row, col);
+            }
+            
+            // 计算得分
+            const levelMultiplier = 1 + (gameState.level - 1) * 0.1;
+            const pointsEarned = Math.floor(GAME_CONFIG.baseScore * matchedBlocks.length * levelMultiplier);
+            gameState.score += pointsEarned;
+            updateScore();
+            
+            // 显示得分动画
+            showScorePopup(matchedBlocks[0][0], matchedBlocks[0][1], pointsEarned);
+            
+            // 播放爆炸音效
+            playSound('burst');
+            
+            // 移除匹配的方块并处理下落（缩短延迟时间）
+            setTimeout(() => {
+                removeMatchedBlocks();
+                dropBlocks();
+                fillEmptySpaces();
+                
+                // 检查是否有新的匹配（更快的连锁反应）
+                setTimeout(() => {
+                    // 检查是否还有可匹配的方块
+                    if (!hasPossibleMatches()) {
+                        generateBoard();
+                    }
+                }, 300);
+                
+                // 检查是否升级
+                checkLevelUp();
+            }, 300);
+        }
+
+        // 显示得分弹窗
+        function showScorePopup(row, col, points) {
+            const blockElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (!blockElement) return;
+            
+            const scorePopup = document.createElement('div');
+            scorePopup.classList.add('absolute', 'text-accent', 'font-pixel', 'text-sm', 'animate-pop', 'z-20');
+            scorePopup.textContent = `+${points}`;
+            
+            // 定位在方块上方
+            const rect = blockElement.getBoundingClientRect();
+            const boardRect = gameBoard.getBoundingClientRect();
+            
+            scorePopup.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
+            scorePopup.style.top = (rect.top - boardRect.top - 20) + 'px';
+            scorePopup.style.transform = 'translateX(-50%)';
+            
+            gameBoard.appendChild(scorePopup);
+            
+            // 移除弹窗
+            setTimeout(() => {
+                scorePopup.remove();
+            }, 800);
+        }
+
+        // 创建爆炸效果 - 增强视觉冲击力
+        function createBurstEffect(row, col) {
+            const blockElement = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            if (!blockElement) return;
+            
+            const burst = document.createElement('div');
+            
+            // 更强烈的爆炸效果
+            burst.classList.add('absolute', 'animate-burst', 'rounded-full');
+            burst.style.width = (blockElement.offsetWidth * 1.5) + 'px';
+            burst.style.height = (blockElement.offsetHeight * 1.5) + 'px';
+            burst.style.left = (blockElement.offsetLeft - blockElement.offsetWidth * 0.25) + 'px';
+            burst.style.top = (blockElement.offsetTop - blockElement.offsetHeight * 0.25) + 'px';
+            
+            // 设置爆炸颜色
+            const colorClass = GAME_CONFIG.colors[gameState.board[row][col].color];
+            if (colorClass.includes('red')) burst.style.backgroundColor = '#FF3366';
+            else if (colorClass.includes('blue')) burst.style.backgroundColor = '#33CCFF';
+            else if (colorClass.includes('green')) burst.style.backgroundColor = '#99FF33';
+            else if (colorClass.includes('gray')) burst.style.backgroundColor = '#E0E0E0';
+            else if (colorClass.includes('pink')) burst.style.backgroundColor = '#FF66CC';
+            
+            // 增加爆炸亮度
+            burst.style.boxShadow = `0 0 15px 5px ${burst.style.backgroundColor}`;
+            
+            gameBoard.appendChild(burst);
+            
+            // 移除爆炸元素
+            setTimeout(() => {
+                burst.remove();
+            }, 300);
+        }
+
+        // 移除匹配的方块
+        function removeMatchedBlocks() {
+            for (let i = 0; i < gameState.size; i++) {
+                for (let j = 0; j < gameState.size; j++) {
+                    if (gameState.board[i][j].matched) {
+                        gameState.board[i][j].color = null;
+                    }
+                }
+            }
+            updateBoardUI();
+        }
+
+        // 下落方块
+        function dropBlocks() {
+            for (let j = 0; j < gameState.size; j++) {
+                let emptyCount = 0;
+                // 从底部向上移动
+                for (let i = gameState.size - 1; i >= 0; i--) {
+                    if (gameState.board[i][j].color === null) {
+                        emptyCount++;
+                    } else if (emptyCount > 0) {
+                        // 下移方块
+                        gameState.board[i + emptyCount][j].color = gameState.board[i][j].color;
+                        gameState.board[i][j].color = null;
+                    }
+                }
+            }
+            updateBoardUI();
+        }
+
+        // 填充空白处
+        function fillEmptySpaces() {
+            for (let j = 0; j < gameState.size; j++) {
+                for (let i = 0; i < gameState.size; i++) {
+                    if (gameState.board[i][j].color === null) {
+                        gameState.board[i][j].color = Math.floor(Math.random() * GAME_CONFIG.colors.length);
+                    }
+                }
+            }
+            updateBoardUI();
+        }
+
+        // 检查是否有可匹配的方块
+        function hasPossibleMatches() {
+            // 检查每个方块是否有至少一个相邻的相同颜色方块
+            for (let i = 0; i < gameState.size; i++) {
+                for (let j = 0; j < gameState.size; j++) {
+                    const color = gameState.board[i][j].color;
+                    
+                    // 检查四个方向是否有相同颜色的方块
+                    if (
+                        (i > 0 && gameState.board[i-1][j].color === color) ||
+                        (i < gameState.size - 1 && gameState.board[i+1][j].color === color) ||
+                        (j > 0 && gameState.board[i][j-1].color === color) ||
+                        (j < gameState.size - 1 && gameState.board[i][j+1].color === color)
+                    ) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // 检查是否升级
+        function checkLevelUp() {
+            const nextLevel = Math.floor(gameState.score / GAME_CONFIG.levelUpThreshold) + 1;
+            if (nextLevel > gameState.level) {
+                gameState.level = nextLevel;
+                updateLevel();
+                
+                // 每10级增加游戏板大小
+                if (gameState.level % 10 === 0 && gameState.size < 8) {
+                    gameState.size++;
+                    generateBoard();
+                }
+                
+                // 增加时间
+                gameState.time += GAME_CONFIG.timePerLevel;
+                updateTime();
+                
+                // 播放升级音效
+                playSound('levelUp');
+                
+                // 显示升级消息
+                showLevelUpMessage();
+            }
+        }
+
+        // 显示升级消息
+        function showLevelUpMessage() {
+            const message = document.createElement('div');
+            message.classList.add('fixed', 'top-1/4', 'left-1/2', 'transform', '-translate-x-1/2', 'bg-accent', 'text-dark', 'px-4', 'py-2', 'rounded-lg', 'font-pixel', 'text-sm', 'z-50', 'animate-pop');
+            message.textContent = `LEVEL UP! ${gameState.level}`;
+            
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                message.remove();
+            }, 1000);
+        }
+
+        // 开始计时器
+        function startTimer() {
+            gameState.timer = setInterval(() => {
+                if (!gameState.isPaused) { // 暂停时不计时
+                    gameState.time--;
+                    updateTime();
+                    
+                    // 时间到，游戏结束
+                    if (gameState.time <= 0) {
+                        endGame();
+                    }
+                }
+            }, 1000);
+        }
+
+        // 暂停游戏
+        function pauseGame() {
+            if (gameState.isGameOver) return;
+            
+            gameState.isPaused = true;
+            pauseOverlay.classList.remove('hidden');
+            playSound('select');
+        }
+
+        // 恢复游戏
+        function resumeGame() {
+            gameState.isPaused = false;
+            pauseOverlay.classList.add('hidden');
+            playSound('select');
+        }
+
+        // 结束游戏
+        function endGame() {
+            gameState.isGameOver = true;
+            clearInterval(gameState.timer);
+            
+            // 播放游戏结束音效
+            playSound('gameOver');
+            
+            // 更新排行榜
+            addToLeaderboard(gameState.score);
+            
+            // 生成游戏结束提示语
+            let tip = "";
+            if (gameState.level < 3) {
+                tip = "Try to find larger groups of the same color for more points!";
+            } else if (gameState.level < 6) {
+                tip = "Great job! Keep looking for those color groups to score higher!";
+            } else {
+                tip = "Amazing skill! You're a Color Burst master!";
+            }
+            
+            // 显示游戏结束覆盖层
+            overlayTitle.textContent = 'Time\'s Up!';
+            overlayMessage.textContent = `Final Score: ${gameState.score} | Level Reached: ${gameState.level}`;
+            gameOverTip.textContent = tip;
+            overlay.classList.remove('hidden');
+        }
+
+        // 更新分数显示
+        function updateScore() {
+            scoreDisplay.textContent = gameState.score;
+        }
+
+        // 更新时间显示
+        function updateTime() {
+            timeDisplay.textContent = gameState.time;
+            
+            // 时间较少时添加警告效果
+            if (gameState.time <= 10) {
+                timeDisplay.classList.add('text-red-400', 'animate-pulse');
+            } else {
+                timeDisplay.classList.remove('text-red-400', 'animate-pulse');
+            }
+        }
+
+        // 更新等级显示
+        function updateLevel() {
+            levelDisplay.textContent = gameState.level;
+        }
+
+        // 播放音效
+        function playSound(soundName) {
+            if (GAME_CONFIG.soundEnabled && sounds[soundName]) {
+                // 克隆音效元素以允许连续播放
+                const soundClone = sounds[soundName].cloneNode();
+                soundClone.volume = 0.3;
+                // 强制播放，解决移动端自动播放限制
+                soundClone.play().catch(e => {
+                    console.log("Sound play prevented, trying to resume:", e);
+                    // 尝试恢复播放
+                    soundClone.play().catch(e => console.log("Failed to play sound:", e));
+                });
+            }
+        }
+
+        // 切换音效
+        function toggleSound() {
+            GAME_CONFIG.soundEnabled = !GAME_CONFIG.soundEnabled;
+            soundToggle.innerHTML = GAME_CONFIG.soundEnabled 
+                ? '<i class="fa fa-volume-up"></i><span class="text-sm">Sound</span>' 
+                : '<i class="fa fa-volume-off"></i><span class="text-sm">Mute</span>';
+            playSound('select');
+        }
+
+        // 加载排行榜
+        function loadLeaderboard() {
+            const savedScores = localStorage.getItem('colorBurstScores');
+            gameState.leaderboard = savedScores ? JSON.parse(savedScores) : [];
+            displayLeaderboard();
+        }
+
+        // 显示排行榜
+        function displayLeaderboard() {
+            leaderboardElement.innerHTML = '';
+            
+            // 按分数排序，取前10名
+            const topScores = [...gameState.leaderboard]
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 10);
+            
+            if (topScores.length === 0) {
+                const emptyItem = document.createElement('div');
+                emptyItem.classList.add('text-center', 'text-gray-400');
+                emptyItem.textContent = 'No scores yet';
+                leaderboardElement.appendChild(emptyItem);
+                return;
+            }
+            
+            topScores.forEach((entry, index) => {
+                const scoreItem = document.createElement('div');
+                scoreItem.classList.add('flex', 'justify-between', 'items-center', 'p-1', 'border-b', 'border-gray-700', index === 0 ? 'text-accent' : '');
+                
+                const rank = document.createElement('span');
+                rank.classList.add('w-8', 'text-center', 'font-pixel', 'text-xs');
+                rank.textContent = (index + 1) + '.';
+                
+                const name = document.createElement('span');
+                name.classList.add('flex-1', 'truncate');
+                name.textContent = entry.name;
+                
+                const score = document.createElement('span');
+                score.classList.add('font-pixel', 'text-xs');
+                score.textContent = entry.score;
+                
+                scoreItem.appendChild(rank);
+                scoreItem.appendChild(name);
+                scoreItem.appendChild(score);
+                
+                leaderboardElement.appendChild(scoreItem);
+            });
+        }
+
+        // 添加到排行榜
+        function addToLeaderboard(score) {
+            gameState.leaderboard.push({
+                name: gameState.username,
+                score: score,
+                date: new Date().toISOString()
+            });
+            
+            // 保存到本地存储
+            localStorage.setItem('colorBurstScores', JSON.stringify(gameState.leaderboard));
+            
+            // 更新显示
+            displayLeaderboard();
+        }
+
+        // 事件监听器
+        startGameBtn.addEventListener('click', () => {
+            startScreen.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            initGame();
+            playSound('select');
+        });
+
+        restartButton.addEventListener('click', () => {
+            initGame();
+            playSound('select');
+        });
+
+        overlayRestart.addEventListener('click', () => {
+            initGame();
+            playSound('select');
+        });
+
+        pauseButton.addEventListener('click', pauseGame);
+        resumeButton.addEventListener('click', resumeGame);
+        pauseRestartButton.addEventListener('click', () => {
+            resumeGame();
+            initGame();
+        });
+
+        soundToggle.addEventListener('click', toggleSound);
+
+        // 初始化排行榜显示
+        loadLeaderboard();
+    </script>
+</body>
+</html>
