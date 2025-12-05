@@ -786,13 +786,98 @@
         }
 
         // 加载排行榜
-        function loadLeaderboard() {
-            const savedScores = localStorage.getItem('colorBurstScores');
-            gameState.leaderboard = savedScores ? JSON.parse(savedScores) : [];
+               // 维格表配置（替换为你的信息）
+        const VIKA_CONFIG = {
+            apiToken: 'uskOatfCKTCPvMc9rI0WX7X', // 你的API令牌
+            datasheetId: 'dsteccjNAAKoZ8asAq'   // 你的数据表ID
+        };
+
+        // 加载公共排行榜
+        async function loadLeaderboard() {
+            // 优先获取公共排行榜，失败则降级到本地存储
+            try {
+                const publicScores = await getPublicLeaderboard();
+                gameState.leaderboard = publicScores;
+            } catch (e) {
+                // 公共排行榜获取失败时使用本地存储兜底
+                const savedScores = localStorage.getItem('colorBurstScores');
+                gameState.leaderboard = savedScores ? JSON.parse(savedScores) : [];
+            }
             displayLeaderboard();
         }
 
-        // 显示排行榜
+        // 获取公共排行榜数据（按分数降序取前10）
+        async function getPublicLeaderboard() {
+            try {
+                const res = await fetch(`https://api.vika.cn/fusion/v1/datasheets/${VIKA_CONFIG.datasheetId}/records?sort=[{"field":"score","order":"desc"}]&limit=10`, {
+                    headers: {
+                        'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!res.ok) throw new Error('获取排行榜失败');
+                
+                const data = await res.json();
+                
+                // 格式化维格表返回的数据
+                return data.data.records.map(item => ({
+                    name: item.fields.name || '匿名玩家',
+                    score: item.fields.score || 0,
+                    level: item.fields.level || 1,
+                    date: item.fields.time || new Date().toISOString()
+                }));
+            } catch (e) {
+                console.log('公共排行榜获取失败，使用本地数据:', e);
+                // 返回空数组，走本地存储逻辑
+                return [];
+            }
+        }
+
+        // 提交成绩到公共排行榜
+        async function addToPublicLeaderboard(name, score, level) {
+            const data = {
+                fields: {
+                    name: name,
+                    score: score,
+                    level: level,
+                    time: new Date().toISOString()
+                }
+            };
+            
+            try {
+                const res = await fetch(`https://api.vika.cn/fusion/v1/datasheets/${VIKA_CONFIG.datasheetId}/records`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${VIKA_CONFIG.apiToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ records: [data] })
+                });
+                
+                if (!res.ok) throw new Error('提交成绩失败');
+                
+                console.log('成绩成功提交到公共排行榜');
+            } catch (e) {
+                console.log('公共排行榜提交失败:', e);
+                // 提交失败时仍保存到本地
+                addToLocalLeaderboard(score);
+            }
+        }
+
+        // 本地排行榜兜底（公共排行榜失败时使用）
+        function addToLocalLeaderboard(score) {
+            gameState.leaderboard.push({
+                name: gameState.username,
+                score: score,
+                date: new Date().toISOString()
+            });
+            
+            // 保存到本地存储
+            localStorage.setItem('colorBurstScores', JSON.stringify(gameState.leaderboard));
+        }
+
+        // 显示排行榜（兼容公共/本地数据）
         function displayLeaderboard() {
             leaderboardElement.innerHTML = '';
             
@@ -833,19 +918,23 @@
             });
         }
 
-        // 添加到排行榜
+        // 添加到排行榜（整合公共+本地）
         function addToLeaderboard(score) {
+            // 优先提交到公共排行榜
+            addToPublicLeaderboard(gameState.username, score, gameState.level);
+            
+            // 同时更新本地排行榜显示
             gameState.leaderboard.push({
                 name: gameState.username,
                 score: score,
                 date: new Date().toISOString()
             });
             
-            // 保存到本地存储
+            // 保存到本地存储兜底
             localStorage.setItem('colorBurstScores', JSON.stringify(gameState.leaderboard));
             
-            // 更新显示
-            displayLeaderboard();
+            // 刷新排行榜显示
+            loadLeaderboard();
         }
 
         // 事件监听器
@@ -877,6 +966,6 @@
 
         // 初始化排行榜显示
         loadLeaderboard();
-    </script>
 </body>
 </html>
+
